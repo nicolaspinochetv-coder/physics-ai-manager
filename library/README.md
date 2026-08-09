@@ -2,7 +2,7 @@
 
 This directory is the **master source library** for deploying AI-assisted physics workspaces. It is intentionally separate from individual research, coding, writing, learning, and assistant projects.
 
-Current library version: **1.3.0**.
+Current library version: **1.6.0**.
 
 ## Main entry point
 
@@ -25,6 +25,7 @@ physics_ai_master/
 ├── blueprints/
 │   ├── CORE.md
 │   ├── HANDOFF.md
+│   ├── DOCUMENTS_README.md
 │   └── modes/
 │       ├── RESEARCH.md
 │       ├── CODING.md
@@ -63,6 +64,7 @@ Codex and OpenCode intentionally share `AGENTS.md` when both are installed.
 - Refresh safety is tracked with hashes in `.ai/DEPLOYMENT.json`; local edits to managed files are preserved and proposed master updates are written as `*.new`.
 - Deployment is non-destructive by default.
 - A project can be extended later with another mode or model adapter.
+- Every project gets a shared, mode-agnostic `documents/` staging folder (with a managed `documents/README.md`) for user-supplied reference material — populated via the app's "Import documents" control (New Project or Manage Project) or placed there manually. See `blueprints/DOCUMENTS_README.md` and `CORE.md`'s "User-supplied documents" section.
 - The model used to deploy a project does not need to be the model used to work on it.
 
 ## Adding a new mode

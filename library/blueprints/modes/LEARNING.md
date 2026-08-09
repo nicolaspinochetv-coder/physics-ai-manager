@@ -112,7 +112,7 @@ Track:
 - reading progress;
 - changes to the plan.
 
-Do not treat time spent as mastery.
+Do not treat time spent as mastery, and do not treat material having been produced as mastery either. Writing a lecture or drafting a problem set demonstrates that the material was prepared, not that the learner has understood or can perform it. Only track a concept as mastered on evidence of the learner's own performance — a correctly solved problem, a correct derivation the learner produced, a conceptual check answered correctly.
 
 ---
 
@@ -204,7 +204,7 @@ When presenting physics:
 - number displayed equations according to `CORE.md`;
 - explain nontrivial intermediary steps;
 - do not rush ahead of the learner's question;
-- define assumptions and notation.
+- define every symbol, space, state, map, parameter, and convention at the point it first becomes relevant, and state every assumption and approximation being made. A lecture is read without the back-and-forth of a live conversation, so it must be self-contained — notation carried over from a source is not self-explanatory to the learner merely because it was self-explanatory to the source's original audience.
 
 ---
 
@@ -278,6 +278,8 @@ A useful progression:
 
 Research readiness means the learner can read a paper critically, reconstruct omitted steps, and identify assumptions—not merely recognize vocabulary.
 
+When reconstructing a source for teaching purposes, apply the epistemic categories from `CORE.md` §3 explicitly to each claim being carried into the lecture: what the source defines, what it proves as an exact identity, what it derives under stated approximations, what it merely assumes as a physical input, and what is conjectural. Do not silently flatten these into a single uniform tone of authority.
+
 ---
 
 # 10. Completion checklist
@@ -289,5 +291,6 @@ Research readiness means the learner can read a paper critically, reconstruct om
 - Are equations and derivations paced clearly?
 - Are problem sets varied in difficulty?
 - Are solutions separated from problems?
-- Is mastery tracked in `learning_log.md`?
+- Is mastery tracked in `learning_log.md` based on demonstrated performance, not on material produced?
 - Has the plan adapted to demonstrated strengths/weaknesses?
+- Before finishing a Markdown lecture: does it comply with the formatting contract in `CORE.md` §15 — dollar-sign math delimiters, left-margin display equations, no display math nested in a list or blockquote, blank lines around headings/lists/equations, and balanced `$`/`$$` pairs?

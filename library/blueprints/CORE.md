@@ -23,6 +23,8 @@ At the beginning of a task, read:
 
 Do not load large unrelated folders merely because they exist.
 
+Each file above must be read completely through EOF before substantive work begins. A partial read — an excerpt, a preview, a truncated tool result — does not satisfy the requirement to read that file; if a read is truncated, issue further reads until the file is complete. This matters concretely: skipping the tail of this file alone would miss the Markdown formatting contract (§15) and the shared-agent/document-staging conventions (§5, §8).
+
 `.ai/SESSION.md` is local runtime state and should normally be excluded from Git. If it is missing or does not specify a mode, infer the most natural mode from the user's current task and state the assumption briefly. There is no required workspace-manager CLI; update `.ai/SESSION.md` directly when the current mode/objective needs to be persisted.
 
 Do not use a stale handoff or log entry as the current objective merely because `SESSION.md` is absent.
@@ -130,6 +132,12 @@ When summarizing literature, distinguish:
 - what they assume;
 - what they speculate;
 - how the current project interprets or uses the result.
+
+## User-supplied documents
+
+`documents/` is a shared, mode-agnostic staging folder for reference material the user provides directly (via the desktop app or placed manually) — prior literature, datasets, specs, correspondence, or similar. It exists independently of which modes are installed; see `documents/README.md` for the full explanation.
+
+A file appearing in `documents/` is not yet catalogued. At the start of a task, check for files there that are not yet referenced from any canonical file; if genuinely relevant to the current work, add a proper entry to the active mode's canonical literature/notes file following the discipline above. Do not treat a file's mere presence in `documents/` as evidence it was read or verified, and do not delete or reorganize it merely to appear tidy.
 
 ---
 

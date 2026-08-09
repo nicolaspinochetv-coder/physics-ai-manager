@@ -2,7 +2,11 @@
 
 This file is intentionally short. The canonical instructions live under `.ai/`.
 
+<!-- SHARED_AGENTS -->
+
 Before doing substantive work in this project:
+
+Read each file below completely through EOF — not an excerpt, a preview, or an initial line range. If a tool call truncates output, issue further reads until the file has been read in full. A partial read of any of these files does not satisfy the step that names it.
 
 1. Read `.ai/CORE.md`.
 2. Read `.ai/PROJECT_CONTEXT.md`.

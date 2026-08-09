@@ -29,6 +29,7 @@ class DeploymentRequest:
     existing_project: bool = False
     refresh_blueprints: bool = False
     reset_session: bool = False
+    import_documents: list[Path] = field(default_factory=list)
 
 
 @dataclass
@@ -42,6 +43,8 @@ class DeploymentResult:
     conflicts: list[str]
     notes: list[str]
     git_initialized: bool
+    imported_documents: list[str]
+    skipped_documents: list[str]
 
 
 @dataclass
@@ -102,6 +105,49 @@ def next_sidecar(path: Path) -> Path:
         if not candidate.exists():
             return candidate
         i += 1
+
+
+def _next_available_name(directory: Path, name: str) -> Path:
+    """Find a free filename in `directory` for `name`, preserving the extension
+    (e.g. `paper.pdf` -> `paper (2).pdf`) rather than appending an opaque suffix."""
+    candidate = directory / name
+    if not candidate.exists():
+        return candidate
+    stem, suffix = candidate.stem, candidate.suffix
+    i = 2
+    while True:
+        candidate = directory / f"{stem} ({i}){suffix}"
+        if not candidate.exists():
+            return candidate
+        i += 1
+
+
+def _import_documents(target: Path, sources: Iterable[Path]) -> tuple[list[str], list[str]]:
+    """Copy user-supplied reference files into the project's shared `documents/`
+    staging folder. Never moves or symlinks the originals. Identical content already
+    present under the same name is skipped (idempotent re-import); a same-named file
+    with different content is kept under a disambiguated name rather than overwritten."""
+    dest_dir = target / "documents"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    imported: list[str] = []
+    skipped: list[str] = []
+    for source in sources:
+        source = Path(source).expanduser()
+        if not source.is_file():
+            skipped.append(f"{source} (not a file)")
+            continue
+        name = source.name
+        existing = dest_dir / name
+        if existing.exists():
+            if sha256_file(existing) == sha256_file(source):
+                skipped.append(f"{name} (already imported)")
+                continue
+            destination = _next_available_name(dest_dir, name)
+        else:
+            destination = existing
+        shutil.copy2(source, destination)
+        imported.append(f"documents/{destination.name}")
+    return imported, skipped
 
 
 def _install_managed_text(
@@ -178,7 +224,31 @@ def _render_session(primary_mode: str, active_agent: str, objective: str = "") -
         f"- Active agent: {active_agent}\n"
         "- Constraints: <optional>\n"
         "- Related files: <optional>\n"
+        "\n"
+        "`Active agent` is only who is driving *this* session; it is edited by hand and "
+        "easily goes stale. For the authoritative, auto-synced list of every AI environment "
+        "configured for this project, see the \"Shared AI environments\" note in this "
+        "project's own bootstrap file (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / "
+        "`.agents/rules/physics-ai.md`).\n"
     )
+
+
+def _render_bootstrap(template: str, installed_agents: list[str], manifest: dict) -> str:
+    """Fill the `<!-- SHARED_AGENTS -->` marker with a concrete, up-to-date list of
+    every AI environment configured for this project, so each agent's own bootstrap
+    file (CLAUDE.md, AGENTS.md, ...) declares who else may share the workspace instead
+    of leaving that only in SESSION.md's single, easily stale `Active agent` field."""
+    if len(installed_agents) <= 1:
+        block = ""
+    else:
+        labels = [manifest["agents"][key]["label"] for key in installed_agents]
+        block = (
+            "## Shared AI environments\n\n"
+            f"This project is configured for {len(labels)} AI environments: {', '.join(labels)}. "
+            "Any of them may have edited this workspace between your sessions. Follow the "
+            "multi-agent collaboration rules in `.ai/CORE.md`.\n"
+        )
+    return template.replace("<!-- SHARED_AGENTS -->", block)
 
 
 def _render_project_context(template: str, title: str, objective: str) -> str:
@@ -338,6 +408,7 @@ def deploy_project(request: DeploymentRequest, library_root: Path) -> Deployment
         if key not in agent_keys:
             agent_keys.append(key)
     active_agent = manifest["agents"][agent_keys[0]]["label"]
+    installed_agents = list(dict.fromkeys(previous.get("installed_agents", []) + agent_keys))
 
     previous_managed = previous.get("managed_files", {}) if isinstance(previous.get("managed_files", {}), dict) else {}
     current_managed = dict(previous_managed)
@@ -365,9 +436,14 @@ def deploy_project(request: DeploymentRequest, library_root: Path) -> Deployment
             previous_managed=previous_managed, current_managed=current_managed, copied=copied, conflicts=conflicts,
         )
 
-    adapter_template = (library_root / manifest["adapter_template"]).read_text(encoding="utf-8")
+    adapter_template_raw = (library_root / manifest["adapter_template"]).read_text(encoding="utf-8")
+    adapter_template = _render_bootstrap(adapter_template_raw, installed_agents, manifest)
     seen_adapter_paths: set[str] = set()
-    for key in agent_keys:
+    # Iterate over every agent ever installed for this project (not just this call's
+    # selection) so that adding a new agent later also refreshes the shared-agent
+    # declaration in already-deployed bootstrap files (CLAUDE.md, AGENTS.md, ...).
+    # _install_managed_text's hash-based refresh keeps this safe against local edits.
+    for key in installed_agents:
         spec = manifest["agents"][key]
         for adapter_path in _adapter_paths(spec):
             if adapter_path in seen_adapter_paths:
@@ -377,7 +453,8 @@ def deploy_project(request: DeploymentRequest, library_root: Path) -> Deployment
                 target=target, rel=adapter_path, text=adapter_template, refresh=request.refresh_blueprints,
                 previous_managed=previous_managed, current_managed=current_managed, copied=copied, conflicts=conflicts,
             )
-        note = spec.get("post_create_note")
+    for key in agent_keys:
+        note = manifest["agents"][key].get("post_create_note")
         if note and note not in notes:
             notes.append(note)
 
@@ -395,12 +472,28 @@ def deploy_project(request: DeploymentRequest, library_root: Path) -> Deployment
     for rel in [".ai/handoffs", ".ai/scratch", ".ai/runtime"]:
         (target / rel).mkdir(parents=True, exist_ok=True)
 
+    # `documents/` is a shared, mode-agnostic staging folder for prior literature or
+    # other reference material the user supplies, independent of which modes are
+    # installed. Its explanatory README is managed like CORE.md/mode files so wording
+    # improvements propagate through the normal blueprint-refresh mechanism.
+    documents_readme_src = library_root / "blueprints" / "DOCUMENTS_README.md"
+    if documents_readme_src.is_file():
+        _install_managed_text(
+            target=target, rel="documents/README.md", text=documents_readme_src.read_text(encoding="utf-8"),
+            refresh=request.refresh_blueprints,
+            previous_managed=previous_managed, current_managed=current_managed, copied=copied, conflicts=conflicts,
+        )
+    imported_documents, skipped_documents = _import_documents(target, request.import_documents)
+    if imported_documents:
+        notes.append(f"Imported {len(imported_documents)} document(s) into documents/.")
+    if skipped_documents:
+        notes.append(f"Skipped {len(skipped_documents)} document(s) already present in documents/.")
+
     for mode in modes:
         _scaffold_mode(target, mode, manifest, library_root)
     _append_gitignore(target, library_root)
 
     installed_modes = list(dict.fromkeys(previous.get("installed_modes", []) + modes))
-    installed_agents = list(dict.fromkeys(previous.get("installed_agents", []) + agent_keys))
     deployment = {
         "schema_version": manifest.get("schema_version", 1),
         "library_version": manifest.get("library_version"),
@@ -439,4 +532,6 @@ def deploy_project(request: DeploymentRequest, library_root: Path) -> Deployment
         conflicts=conflicts,
         notes=notes,
         git_initialized=git_initialized,
+        imported_documents=imported_documents,
+        skipped_documents=skipped_documents,
     )

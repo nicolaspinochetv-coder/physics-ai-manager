@@ -103,6 +103,7 @@ class PhysicsAIManager(tk.Tk):
         self.mode_vars = {m: tk.BooleanVar(value=(m == "RESEARCH")) for m in self.modes}
         default_agent = self.config_data.get("last_agent", "claude")
         self.agent_vars = {a: tk.BooleanVar(value=(a == default_agent)) for a in self.agents}
+        self.new_document_paths: list[Path] = []
 
         row = 0
         ttk.Label(tab, text="Project title").grid(row=row, column=0, sticky="w", padx=(0, 12), pady=6)
@@ -149,6 +150,13 @@ class PhysicsAIManager(tk.Tk):
         self.primary_combo.grid(row=row, column=1, columnspan=2, sticky="ew", pady=6)
         row += 1
 
+        self.new_documents_listbox = self._build_documents_box(
+            tab, row, "Import documents (optional)", self.new_document_paths,
+            lambda: self._add_documents(self.new_document_paths, self.new_documents_listbox),
+            lambda: self._remove_selected_documents(self.new_document_paths, self.new_documents_listbox),
+        )
+        row += 1
+
         ttk.Label(tab, text="Initial objective").grid(row=row, column=0, sticky="nw", padx=(0, 12), pady=6)
         self.objective_text = ScrolledText(tab, height=5, wrap="word")
         self.objective_text.grid(row=row, column=1, columnspan=2, sticky="nsew", pady=6)
@@ -175,13 +183,14 @@ class PhysicsAIManager(tk.Tk):
     def _build_manage_tab(self) -> None:
         tab = self.manage_tab
         tab.columnconfigure(1, weight=1)
-        tab.rowconfigure(5, weight=1)
+        tab.rowconfigure(6, weight=1)
         self.manage_path_var = tk.StringVar()
         self.manage_info_var = tk.StringVar(value="Choose an existing Physics AI project.")
         self.manage_refresh_var = tk.BooleanVar(value=False)
         self.manage_reset_var = tk.BooleanVar(value=False)
         self.manage_mode_vars = {m: tk.BooleanVar(value=False) for m in self.modes}
         self.manage_agent_vars = {a: tk.BooleanVar(value=False) for a in self.agents}
+        self.manage_document_paths: list[Path] = []
 
         ttk.Label(tab, text="Project folder").grid(row=0, column=0, sticky="w", padx=(0, 12), pady=6)
         ttk.Entry(tab, textvariable=self.manage_path_var).grid(row=0, column=1, sticky="ew", pady=6)
@@ -204,19 +213,49 @@ class PhysicsAIManager(tk.Tk):
                 row=idx // 3, column=idx % 3, sticky="w", padx=(0, 20), pady=3
             )
 
+        self.manage_documents_listbox = self._build_documents_box(
+            tab, 4, "Import documents (optional)", self.manage_document_paths,
+            lambda: self._add_documents(self.manage_document_paths, self.manage_documents_listbox),
+            lambda: self._remove_selected_documents(self.manage_document_paths, self.manage_documents_listbox),
+            columnspan=4,
+        )
+
         opts = ttk.Frame(tab)
-        opts.grid(row=4, column=0, columnspan=4, sticky="ew", pady=6)
+        opts.grid(row=5, column=0, columnspan=4, sticky="ew", pady=6)
         ttk.Checkbutton(opts, text="Refresh managed blueprints", variable=self.manage_refresh_var).pack(side="left")
         ttk.Checkbutton(opts, text="Reset session file", variable=self.manage_reset_var).pack(side="left", padx=(20, 0))
 
         self.manage_output = ScrolledText(tab, height=12, wrap="word", state="disabled")
-        self.manage_output.grid(row=5, column=0, columnspan=4, sticky="nsew", pady=8)
+        self.manage_output.grid(row=6, column=0, columnspan=4, sticky="nsew", pady=8)
 
         buttons = ttk.Frame(tab)
-        buttons.grid(row=6, column=0, columnspan=4, sticky="ew")
+        buttons.grid(row=7, column=0, columnspan=4, sticky="ew")
         ttk.Button(buttons, text="Doctor", command=self._doctor).pack(side="left")
         ttk.Button(buttons, text="Open Folder", command=self._open_manage_folder).pack(side="left", padx=(8, 0))
         ttk.Button(buttons, text="Apply Changes", style="Primary.TButton", command=self._apply_manage).pack(side="right")
+
+    def _build_documents_box(self, tab, row, label_text, paths, on_add, on_remove, *, columnspan=3):
+        box = ttk.LabelFrame(tab, text=label_text, style="Section.TLabelframe", padding=10)
+        box.grid(row=row, column=0, columnspan=columnspan, sticky="ew", pady=6)
+        box.columnconfigure(0, weight=1)
+
+        listbox = tk.Listbox(box, height=4, selectmode="extended")
+        listbox.grid(row=0, column=0, sticky="ew")
+        scrollbar = ttk.Scrollbar(box, orient="vertical", command=listbox.yview)
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        listbox.configure(yscrollcommand=scrollbar.set)
+
+        button_row = ttk.Frame(box)
+        button_row.grid(row=1, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        ttk.Button(button_row, text="Add files…", command=on_add).pack(side="left")
+        ttk.Button(button_row, text="Remove selected", command=on_remove).pack(side="left", padx=(8, 0))
+        ttk.Label(
+            button_row,
+            text="Copied into documents/ when the project is created or updated; originals are left untouched.",
+        ).pack(side="left", padx=(12, 0))
+
+        self._refresh_document_listbox(paths, listbox)
+        return listbox
 
     def _selected_project_key(self) -> str:
         value = self.type_combo.get()
@@ -236,6 +275,29 @@ class PhysicsAIManager(tk.Tk):
         if chosen:
             self.parent_var.set(chosen)
             self._update_preview()
+
+    def _add_documents(self, paths: list[Path], listbox: tk.Listbox) -> None:
+        chosen = filedialog.askopenfilenames(title="Select documents to import")
+        if not chosen:
+            return
+        existing = set(paths)
+        for item in chosen:
+            candidate = Path(item)
+            if candidate not in existing:
+                paths.append(candidate)
+                existing.add(candidate)
+        self._refresh_document_listbox(paths, listbox)
+
+    def _remove_selected_documents(self, paths: list[Path], listbox: tk.Listbox) -> None:
+        for index in reversed(listbox.curselection()):
+            del paths[index]
+        self._refresh_document_listbox(paths, listbox)
+
+    @staticmethod
+    def _refresh_document_listbox(paths: list[Path], listbox: tk.Listbox) -> None:
+        listbox.delete(0, "end")
+        for path in paths:
+            listbox.insert("end", str(path))
 
     def _project_type_changed(self, _event=None) -> None:
         key = self._selected_project_key()
@@ -297,6 +359,7 @@ class PhysicsAIManager(tk.Tk):
             objective=objective,
             git_init=self.git_var.get(),
             existing_project=self.allow_existing_var.get(),
+            import_documents=list(self.new_document_paths),
         )
         try:
             result = deploy_project(request, self.library_root)
@@ -308,6 +371,8 @@ class PhysicsAIManager(tk.Tk):
         self.config_data["git_init"] = self.git_var.get()
         self.config_data["last_agent"] = agents[0]
         save_config(self.config_data)
+        self.new_document_paths.clear()
+        self._refresh_document_listbox(self.new_document_paths, self.new_documents_listbox)
 
         details = [
             f"Created: {result.path}",
@@ -369,6 +434,7 @@ class PhysicsAIManager(tk.Tk):
                     existing_project=True,
                     refresh_blueprints=self.manage_refresh_var.get(),
                     reset_session=self.manage_reset_var.get(),
+                    import_documents=list(self.manage_document_paths),
                 ),
                 self.library_root,
             )
@@ -383,6 +449,8 @@ class PhysicsAIManager(tk.Tk):
         self._set_manage_output("\n".join(lines) + "\n")
         self.manage_refresh_var.set(False)
         self.manage_reset_var.set(False)
+        self.manage_document_paths.clear()
+        self._refresh_document_listbox(self.manage_document_paths, self.manage_documents_listbox)
         updated = inspect_project(path)
         self.manage_info_var.set(
             f"{updated.title}  •  type: {updated.project_type}  •  primary: {updated.primary_mode}  •  "
