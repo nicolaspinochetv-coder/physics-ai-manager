@@ -1,0 +1,150 @@
+{
+  "schema_version": 2,
+  "library_name": "Physics AI Master",
+  "project_types": {
+    "research": {
+      "label": "Research / literature and concept development",
+      "primary_mode": "RESEARCH",
+      "description": "Literature organization, paper reading, explanations, research maps, notes, and open questions."
+    },
+    "coding": {
+      "label": "Scientific coding / symbolic and numerical work",
+      "primary_mode": "CODING",
+      "description": "Python, Mathematica, simulations, symbolic calculations, tests, data, and figures."
+    },
+    "writing": {
+      "label": "Paper writing / editing",
+      "primary_mode": "WRITING",
+      "description": "LaTeX manuscript structure, literature, figures, claims-to-sources tracking, and editing."
+    },
+    "learning": {
+      "label": "Learning / course construction",
+      "primary_mode": "LEARNING",
+      "description": "Adaptive study plans, lectures, literature, problem sets, solutions, and progress tracking."
+    },
+    "assistant": {
+      "label": "Local AI research assistant",
+      "primary_mode": "ASSISTANT",
+      "description": "Profile-aware project support, proposals, research ideas, correspondence, and planning."
+    },
+    "hybrid": {
+      "label": "Hybrid / multi-mode project",
+      "primary_mode": null,
+      "description": "Install several mode blueprints and choose one as the initial primary mode."
+    }
+  },
+  "agents": {
+    "claude": {
+      "label": "Claude Code",
+      "adapter_paths": [
+        "CLAUDE.md"
+      ],
+      "adapter": "CLAUDE.md"
+    },
+    "codex": {
+      "label": "Codex",
+      "adapter_paths": [
+        "AGENTS.md"
+      ],
+      "adapter": "AGENTS.md"
+    },
+    "antigravity": {
+      "label": "Google Antigravity",
+      "adapter_paths": [
+        ".agents/rules/physics-ai.md"
+      ],
+      "post_create_note": "If Antigravity does not activate the workspace rule automatically, open Customizations \u2192 Rules and set \u201cphysics-ai\u201d to Always On.",
+      "adapter": ".agents/rules/physics-ai.md"
+    },
+    "gemini": {
+      "label": "Gemini Code Assist",
+      "adapter_paths": [
+        "GEMINI.md"
+      ],
+      "adapter": "GEMINI.md"
+    },
+    "opencode": {
+      "label": "OpenCode",
+      "adapter_paths": [
+        "AGENTS.md"
+      ],
+      "adapter": "AGENTS.md"
+    }
+  },
+  "mode_scaffolds": {
+    "RESEARCH": {
+      "dirs": [
+        "research/literature"
+      ],
+      "files": {
+        "research/research_notes.md": "research/research_notes.md",
+        "research/research_log.md": "research/research_log.md",
+        "research/research_map.md": "research/research_map.md",
+        "research/research_literature.md": "research/research_literature.md"
+      }
+    },
+    "CODING": {
+      "dirs": [
+        "code/python",
+        "code/mathematica",
+        "code/notebooks",
+        "code/tests",
+        "code/data/input",
+        "code/data/generated",
+        "code/figures/generated"
+      ],
+      "files": {
+        "code/coding_map.md": "coding/coding_map.md",
+        "code/coding_log.md": "coding/coding_log.md"
+      }
+    },
+    "WRITING": {
+      "dirs": [
+        "paper/sections",
+        "paper/figures/source",
+        "paper/figures/export",
+        "paper/bibliography",
+        "paper/literature",
+        "paper/notes"
+      ],
+      "files": {
+        "paper/writing_map.md": "writing/writing_map.md",
+        "paper/claims_sources.md": "writing/claims_sources.md",
+        "paper/writing_log.md": "writing/writing_log.md",
+        "paper/main.tex": "writing/main.tex",
+        "paper/bibliography/references.bib": "writing/references.bib"
+      }
+    },
+    "LEARNING": {
+      "dirs": [
+        "learning/lectures",
+        "learning/problem_sets",
+        "learning/solutions",
+        "learning/literature"
+      ],
+      "files": {
+        "learning/learning_plan.md": "learning/learning_plan.md",
+        "learning/concept_map.md": "learning/concept_map.md",
+        "learning/learning_log.md": "learning/learning_log.md"
+      }
+    },
+    "ASSISTANT": {
+      "dirs": [
+        "assistant/profile",
+        "assistant/projects",
+        "assistant/proposals",
+        "assistant/ideas",
+        "assistant/correspondence"
+      ],
+      "files": {
+        "assistant/profile/core_profile.md": "assistant/core_profile.md",
+        "assistant/profile/preferences.md": "assistant/preferences.md",
+        "assistant/profile/projects_index.md": "assistant/projects_index.md",
+        "assistant/profile/memory_log.md": "assistant/memory_log.md",
+        "assistant/assistant_log.md": "assistant/assistant_log.md"
+      }
+    }
+  },
+  "library_version": "1.3.0",
+  "adapter_template": "adapters/_BOOTSTRAP_TEMPLATE.md"
+}

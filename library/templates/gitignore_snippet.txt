@@ -1,0 +1,4 @@
+# Physics AI local runtime state
+.ai/SESSION.md
+.ai/scratch/
+.ai/runtime/
