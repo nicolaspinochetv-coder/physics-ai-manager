@@ -24,8 +24,8 @@ class PhysicsAIManager(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(APP_NAME)
-        self.geometry("900x760")
-        self.minsize(820, 680)
+        self.geometry("900x800")
+        self.minsize(820, 560)
         self._set_window_icon()
 
         self.config_data = load_config()
@@ -88,8 +88,51 @@ class PhysicsAIManager(tk.Tk):
         ttk.Label(footer, text=f"Blueprint library {version}  •  {self.library_root}").pack(side="left")
         ttk.Button(footer, text="Open library folder", command=lambda: self._open_folder(self.library_root)).pack(side="right")
 
+    def _make_scrollable(self, parent: ttk.Frame) -> ttk.Frame:
+        """Wrap `parent`'s content in a vertically scrollable area (mouse wheel and a
+        scrollbar), so a tab with more content than fits the window stays reachable
+        instead of being silently clipped. Returns the frame to grid content into."""
+        style = ttk.Style(self)
+        bg = style.lookup("TFrame", "background") or self.cget("background")
+        canvas = tk.Canvas(parent, highlightthickness=0, bg=bg)
+        scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        inner = ttk.Frame(canvas)
+        inner_window = canvas.create_window((0, 0), window=inner, anchor="nw")
+
+        inner.bind("<Configure>", lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda e: canvas.itemconfig(inner_window, width=e.width))
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        parent.rowconfigure(0, weight=1)
+        parent.columnconfigure(0, weight=1)
+
+        def on_wheel(event) -> None:
+            if event.num == 4:
+                canvas.yview_scroll(-1, "units")
+            elif event.num == 5:
+                canvas.yview_scroll(1, "units")
+            else:
+                canvas.yview_scroll(-1 if event.delta > 0 else 1, "units")
+
+        def bind_wheel(_e=None) -> None:
+            canvas.bind_all("<Button-4>", on_wheel)
+            canvas.bind_all("<Button-5>", on_wheel)
+            canvas.bind_all("<MouseWheel>", on_wheel)
+
+        def unbind_wheel(_e=None) -> None:
+            canvas.unbind_all("<Button-4>")
+            canvas.unbind_all("<Button-5>")
+            canvas.unbind_all("<MouseWheel>")
+
+        canvas.bind("<Enter>", bind_wheel)
+        canvas.bind("<Leave>", unbind_wheel)
+
+        return inner
+
     def _build_new_tab(self) -> None:
-        tab = self.new_tab
+        tab = self._make_scrollable(self.new_tab)
         tab.columnconfigure(1, weight=1)
 
         self.title_var = tk.StringVar()
@@ -160,7 +203,6 @@ class PhysicsAIManager(tk.Tk):
         ttk.Label(tab, text="Initial objective").grid(row=row, column=0, sticky="nw", padx=(0, 12), pady=6)
         self.objective_text = ScrolledText(tab, height=5, wrap="word")
         self.objective_text.grid(row=row, column=1, columnspan=2, sticky="nsew", pady=6)
-        tab.rowconfigure(row, weight=1)
         row += 1
 
         options = ttk.Frame(tab)
@@ -181,9 +223,8 @@ class PhysicsAIManager(tk.Tk):
         self._update_preview()
 
     def _build_manage_tab(self) -> None:
-        tab = self.manage_tab
+        tab = self._make_scrollable(self.manage_tab)
         tab.columnconfigure(1, weight=1)
-        tab.rowconfigure(6, weight=1)
         self.manage_path_var = tk.StringVar()
         self.manage_info_var = tk.StringVar(value="Choose an existing Physics AI project.")
         self.manage_refresh_var = tk.BooleanVar(value=False)

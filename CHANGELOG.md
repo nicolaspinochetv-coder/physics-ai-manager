@@ -1,5 +1,9 @@
 # Physics AI Manager — Changelog
 
+## 1.6.1
+
+- Fixed New Project / Manage Project tabs getting clipped on shorter windows (the "Import documents" section pushed New Project past the fixed window height). Both tabs now scroll — mouse wheel and a scrollbar — instead of hard-clipping content, and the minimum window height was reduced accordingly.
+
 ## 1.6.0
 
 - Renamed the "Prior documents" control to "Import documents" in both the New Project and Manage Project tabs.
